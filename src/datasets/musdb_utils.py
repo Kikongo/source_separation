@@ -5,9 +5,9 @@ import torch
 def get_number_of_possible_segments(wav_file, segment_length_in_seconds, sample_rate):
     return int(np.ceil(len(wav_file) / (sample_rate*segment_length_in_seconds)))
 
-def divide_into_segments(wav_file, segment_length_in_seconds:float=2.0, zero_pad_factor:int=0):
+def divide_into_segments(wav_file, sample_rate = 16000,segment_length_in_seconds:float=2.0, zero_pad_factor:int=0):
     wav_file = wav_file[0]
-    wav_file_duration = len(wav_file) / 16000
+    wav_file_duration = len(wav_file) / sample_rate
     if segment_length_in_seconds <= 0.0 or segment_length_in_seconds > wav_file_duration:
 
         return np.array([wav_file])
@@ -15,7 +15,6 @@ def divide_into_segments(wav_file, segment_length_in_seconds:float=2.0, zero_pad
         #if segment_length_in_seconds is 0.0 or less, or greater than the duration of audio file, no segmentation is performed
         #first the self.__wav_file will be converted to a list that contains it and then a numpy array of that list is returned
         #the reason is that we want to treat self.__wav_file as one segment so that in other methods, we still have a segments list that we can loop through
-    sample_rate = 16000
 
     number_of_segments_in_file = get_number_of_possible_segments(wav_file, segment_length_in_seconds, sample_rate)
     #the number of seconds in a wave file is 1/sample_rate. if we divide that by the length of chunks we want,

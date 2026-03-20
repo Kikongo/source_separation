@@ -18,7 +18,7 @@ class StandardSeparationUNet(nn.Module):
         # Декодер
         self.dec1 = nn.ConvTranspose2d(512, 256, 3, stride=1, padding=1, output_padding=0)
         self.dec2 = nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=(1, 0))
-        self.dec3 = nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=(1, 0))
+        self.dec3 = nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=(1, 1))
 
         # Выходной слой - сразу все источники
         self.output = nn.Conv2d(64, n_sources, kernel_size=(1,1))  # [batch, n_sources, freq, time]

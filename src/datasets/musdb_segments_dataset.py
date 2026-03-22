@@ -4,7 +4,8 @@ class MusDB_segments(Dataset):
     def __init__(self, instance_data):
 
         self.mixture_segments_spectrograms = instance_data['mixture_segments_spectrograms']
-        self.sources_segments_spectrograms = instance_data['source_segments_spectrograms']
+        self.sources_segments_spectrograms = instance_data['vocals_segments_spectrograms']
+        self.accompaniment_segments_spectrograms = instance_data['accompaniment_segments_spectrograms']
 
     def __len__(self):
         return self.mixture_segments_spectrograms.shape[0]

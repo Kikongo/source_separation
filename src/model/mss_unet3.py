@@ -17,19 +17,19 @@ class StandardSeparationUNet(nn.Module):
 
         # Энкодер
         self.enc1_1 = nn.Conv2d(1, 32, 3, padding=1)  # [batch, 64, freq, time]
-        self.enc1_2 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
+        self.enc1_2 = nn.Conv2d(32, 32, 3, stride=1, padding=1)
         self.enc1_3 = nn.Conv2d(32, 32, 3, stride=2, padding=1)
 
         self.enc2_1 = nn.Conv2d(32, 64, 3, padding=1)
-        self.enc2_2 = nn.Conv2d(64, 64, 3, stride=2, padding=1)
+        self.enc2_2 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
         self.enc2_3 = nn.Conv2d(64, 64, 3, stride=2, padding=1)
 
         self.enc3_1 = nn.Conv2d(64, 128, 3, padding=1)
-        self.enc3_2 = nn.Conv2d(128, 128, 3, stride=2, padding=1)
+        self.enc3_2 = nn.Conv2d(128, 128, 3, stride=1, padding=1)
         self.enc3_3 = nn.Conv2d(128, 128, 3, stride=2, padding=1)
 
         self.enc4_1 = nn.Conv2d(128, 256, 3, padding=1)
-        self.enc4_2 = nn.Conv2d(256, 256, 3, stride=2, padding=1)
+        self.enc4_2 = nn.Conv2d(256, 256, 3, stride=1, padding=1)
         self.enc4_3 = nn.Conv2d(256, 256, 3, stride=2, padding=1)
 
         # Боттлнек
@@ -38,20 +38,20 @@ class StandardSeparationUNet(nn.Module):
 
         # Декодер
         self.dec1_1 = nn.ConvTranspose2d(512, 256, 3, stride=1, padding=1, output_padding=0)
-        self.dec1_2 = nn.ConvTranspose2d(256, 256, 3, stride=2, padding=1, output_padding=(0, 1))
-        self.dec1_3 = nn.ConvTranspose2d(256, 256, 3, stride=2, padding=1, output_padding=(1, 0))
+        self.dec1_2 = nn.ConvTranspose2d(256, 256, 3, stride=1, padding=1, output_padding=0)
+        self.dec1_3 = nn.ConvTranspose2d(256, 256, 3, stride=2, padding=1, output_padding=(0, 1))
 
         self.dec2_1 = nn.ConvTranspose2d(256, 128, 3, stride=1, padding=1, output_padding=0)
-        self.dec2_2 = nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1, output_padding=(1, 1))
-        self.dec2_3 = nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1, output_padding=(1, 1))
+        self.dec2_2 = nn.ConvTranspose2d(128, 128, 3, stride=1, padding=1, output_padding=0)
+        self.dec2_3 = nn.ConvTranspose2d(128, 128, 3, stride=2, padding=1, output_padding=(0, 1))
 
         self.dec3_1 = nn.ConvTranspose2d(128, 64, 3, stride=1, padding=1, output_padding=0)
-        self.dec3_2 = nn.ConvTranspose2d(64, 64, 3, stride=2, padding=1, output_padding=(1, 1))
-        self.dec3_3 = nn.ConvTranspose2d(64, 64, 3, stride=2, padding=1, output_padding=(1, 0))        
+        self.dec3_2 = nn.ConvTranspose2d(64, 64, 3, stride=1, padding=1, output_padding=0)
+        self.dec3_3 = nn.ConvTranspose2d(64, 64, 3, stride=2, padding=1, output_padding=(0, 0))        
 
         self.dec4_1 = nn.ConvTranspose2d(64, 32, 3, stride=1, padding=1, output_padding=0)
-        self.dec4_2 = nn.ConvTranspose2d(32, 32, 3, stride=2, padding=1, output_padding=(1, 0))
-        self.dec4_3 = nn.ConvTranspose2d(32, 32, 3, stride=2, padding=1, output_padding=(1, 1))
+        self.dec4_2 = nn.ConvTranspose2d(32, 32, 3, stride=1, padding=1, output_padding=0)
+        self.dec4_3 = nn.ConvTranspose2d(32, 32, 3, stride=2, padding=1, output_padding=(0, 0))
 
         # Выходной слой - сразу все источники
         self.output = nn.Conv2d(32, n_sources, kernel_size=(1,1))  # [batch, n_sources, freq, time]

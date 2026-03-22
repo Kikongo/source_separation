@@ -24,21 +24,33 @@ class MusDBSigSepStems(Dataset):
         instance_data = {}
 
         spectrogram_transform = torchaudio.transforms.Spectrogram(n_fft=2048, hop_length=512, win_length=2048)
-        for key in item.targets:
-            #Get audio waveform and segments
-            instance_data[f"{key}_audio"] = item.targets[key].audio[:, 0] # sr = 44100
-            instance_data[f"{key}_audio"] = torch.tensor(instance_data[f"{key}_audio"], dtype=torch.float32).unsqueeze(0) # [1, n_samples]
+        # for key in item.targets:
+        #     #Get audio waveform and segments
+        #     instance_data[f"{key}_audio"] = item.targets[key].audio[:, 0] # sr = 44100
+        #     instance_data[f"{key}_audio"] = torch.tensor(instance_data[f"{key}_audio"], dtype=torch.float32).unsqueeze(0) # [1, n_samples]
             
-            spectrogram_segments = []
-            audio_segments = divide_into_segments(instance_data[f"{key}_audio"], sample_rate=44100)
+        #     spectrogram_segments = []
+        #     audio_segments = divide_into_segments(instance_data[f"{key}_audio"], sample_rate=44100)
 
-            instance_data[f"{key}_segments_audio"] = audio_segments
+        #     instance_data[f"{key}_segments_audio"] = audio_segments
             
-            for audio_segment in audio_segments:
-                spectrogram_segment = spectrogram_transform(audio_segment)
-                spectrogram_segments.append(spectrogram_segment)
+        #     for audio_segment in audio_segments:
+        #         spectrogram_segment = spectrogram_transform(audio_segment)
+        #         spectrogram_segments.append(spectrogram_segment)
             
-            instance_data[f"{key}_segments_spectrograms"] = torch.stack(spectrogram_segments, dim=0) #[n_segm, freq, time]
+        #     instance_data[f"{key}_segments_spectrograms"] = torch.stack(spectrogram_segments, dim=0) #[n_segm, freq, time]
+
+        instance_data[f"vocals_audio"] = item.targets["vocals"].audio[:, 0] # sr = 44100
+        instance_data["vocals_audio"] = torch.tensor(instance_data["vocals_audio"], dtype=torch.float32).unsqueeze(0) # [1, n_samples]
+        
+        spectrogram_segments = []
+        audio_segments = divide_into_segments(instance_data["vocals_audio"], sample_rate=44100)
+
+        instance_data["vocals_segments_audio"] = audio_segments
+        
+        for audio_segment in audio_segments:
+            spectrogram_segment = spectrogram_transform(audio_segment)
+            spectrogram_segments.append(spectrogram_segment)
 
         # Get mixture
         instance_data['mixture_audio'] = item.audio[:, 0] # sr = 44100

@@ -64,51 +64,51 @@ class StandardSeparationUNet(nn.Module):
         e1_2 = torch.relu(self.batch_norm1(self.enc1_2(e1_1)))
         e1_3 = torch.relu(self.batch_norm1(self.enc1_3(e1_2)))
 
-        print(e1_3.shape)
+        #print(e1_3.shape)
         e2_1 = torch.relu(self.batch_norm2(self.enc2_1(e1_3)))
         e2_2 = torch.relu(self.batch_norm2(self.enc2_2(e2_1)))
         e2_3 = torch.relu(self.batch_norm2(self.enc2_3(e2_2)))
 
-        print(e2_3.shape)
+        #print(e2_3.shape)
         e3_1 = torch.relu(self.batch_norm3(self.enc3_1(e2_3)))
         e3_2 = torch.relu(self.batch_norm3(self.enc3_2(e3_1)))
         e3_3 = torch.relu(self.batch_norm3(self.enc3_3(e3_2)))
 
-        print(e3_3.shape)
+        #print(e3_3.shape)
 
         e4_1 = torch.relu(self.batch_norm4(self.enc4_1(e3_3)))
         e4_2 = torch.relu(self.batch_norm4(self.enc4_2(e4_1)))
         e4_3 = torch.relu(self.batch_norm4(self.enc4_3(e4_2)))
 
-        print(e4_3.shape)
+        #print(e4_3.shape)
 
         b = torch.relu(self.batch_norm_center(self.bottleneck(e4_3)))
-        print(f"bottlenec {b.shape}")
+        #print(f"bottlenec {b.shape}")
 
         d1_1 = self.dropout(torch.relu(self.batch_norm4(self.dec1_1(b))))
         d1_2 = torch.relu(self.batch_norm4(self.dec1_2(d1_1 + e4_3)))
         d1_3 = torch.relu(self.batch_norm4(self.dec1_3(d1_2)))
 
-        print(f"dec1 {d1_3.shape}")
+        #print(f"dec1 {d1_3.shape}")
         
         d2_1 = self.dropout(torch.relu(self.batch_norm3(self.dec2_1(d1_3))))  # Skip connection
         d2_2 = torch.relu(self.batch_norm3(self.dec2_2(d2_1 + e3_3)))  # Skip connection
         d2_3 = torch.relu(self.batch_norm3(self.dec2_3(d2_2)))  # Skip connection
         
-        print(f"dec2 {d2_3.shape}")
+        #print(f"dec2 {d2_3.shape}")
         d3_1 = self.dropout(torch.relu(self.batch_norm2(self.dec3_1(d2_3))))  # Skip connection
         d3_2 = torch.relu(self.batch_norm2(self.dec3_2(d3_1 + e2_3)))  # Skip connection
         d3_3 = torch.relu(self.batch_norm2(self.dec3_3(d3_2)))  # Skip connection
 
-        print(f"dec3 {d3_3.shape}")
+        #print(f"dec3 {d3_3.shape}")
 
         d4_1 = self.dropout(torch.relu(self.batch_norm1(self.dec4_1(d3_3))))  # Skip connection
         d4_2 = torch.relu(self.batch_norm1(self.dec4_2(d4_1 + e1_3)))  # Skip connection
         d4_3 = torch.relu(self.batch_norm1(self.dec4_3(d4_2)))  # Skip connection
 
-        print(f"dec4 {d4_3.shape}")
+        #print(f"dec4 {d4_3.shape}")
 
         # Выход: маски или спектрограммы для всех источников
         output = torch.sigmoid(self.output(d4_3))
-        print(f"output {output.shape}")
+        #print(f"output {output.shape}")
         return output  # [batch, n_sources, freq, time]

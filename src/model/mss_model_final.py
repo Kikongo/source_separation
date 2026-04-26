@@ -36,23 +36,23 @@ class StandardSeparationUNet(nn.Module):
 
         # Декодер
         self.dec1_1 = nn.ConvTranspose2d(512, 256, 5, stride=2, padding=2, output_padding=(1, 1))
-        self.dec1_2 = nn.ConvTranspose2d(256, 256, 3, stride=1, padding=1, output_padding=0)
+        self.dec1_2 = nn.ConvTranspose2d(512, 256, 3, stride=1, padding=1, output_padding=0)
         self.dec1_3 = nn.ConvTranspose2d(256, 256, 3, stride=1, padding=1, output_padding=0)
 
         self.dec2_1 = nn.ConvTranspose2d(256, 128, 5, stride=2, padding=2, output_padding=(1, 1))
-        self.dec2_2 = nn.ConvTranspose2d(128, 128, 3, stride=1, padding=1, output_padding=0)
+        self.dec2_2 = nn.ConvTranspose2d(256, 128, 3, stride=1, padding=1, output_padding=0)
         self.dec2_3 = nn.ConvTranspose2d(128, 128, 3, stride=1, padding=1, output_padding=0)
 
         self.dec3_1 = nn.ConvTranspose2d(128, 64, 5, stride=2, padding=2, output_padding=(1, 1))
-        self.dec3_2 = nn.ConvTranspose2d(64, 64, 3, stride=1, padding=1, output_padding=0)
+        self.dec3_2 = nn.ConvTranspose2d(128, 64, 3, stride=1, padding=1, output_padding=0)
         self.dec3_3 = nn.ConvTranspose2d(64, 64, 3, stride=1, padding=1, output_padding=0)
 
         self.dec4_1 = nn.ConvTranspose2d(64, 32, 5, stride=2, padding=2, output_padding=(1, 1))
-        self.dec4_2 = nn.ConvTranspose2d(32, 32, 3, stride=1, padding=1, output_padding=0)
+        self.dec4_2 = nn.ConvTranspose2d(64, 32, 3, stride=1, padding=1, output_padding=0)
         self.dec4_3 = nn.ConvTranspose2d(32, 32, 3, stride=1, padding=1, output_padding=0)
 
         # Выходной слой - сразу все источники
-        self.output = nn.Conv2d(32, n_sources+1, kernel_size=(1,1))  # [batch, n_sources, freq, time]
+        self.output = nn.Conv2d(32, n_sources, kernel_size=(1,1))  # [batch, n_sources, freq, time]
 
     def forward(self, mixture_spectrogram):
         # mixture_spectrogram: [batch, 1, freq, time] - спектрограмма смеси
@@ -80,6 +80,7 @@ class StandardSeparationUNet(nn.Module):
         max_pool_e1 = self.max_pool(e1_2)
 
         #print(f"Enc1_1 {e1_1.shape}")
+        #print(f"Enc1_2 {e1_2.shape}")
         #print(f"MaxPoolE1 {max_pool_e1.shape}")
 
         e2_1 = torch.relu(self.batch_norm2(self.enc2_1(max_pool_e1)))
@@ -103,31 +104,38 @@ class StandardSeparationUNet(nn.Module):
         #print(f"Enc4_1 {e4_1.shape}")
         #print(f"MaxPoolE4 {max_pool_e4.shape}")
 
+        #Bottleneck
         b = torch.relu(self.batch_norm_center(self.bottleneck(max_pool_e4)))
-        print(f"bottlenec {b.shape}")
+        #print(f"bottlenec {b.shape}")
         b = torch.relu(self.batch_norm_center(self.bottleneck2(b)))
-        print(f"bottlenec {b.shape}")
+        #print(f"bottlenec {b.shape}")
 
+        #Обратный проход
         d1_1 = self.dropout(torch.relu(self.batch_norm4(self.dec1_1(b))))
-        print(f"dec1 {d1_1.shape}")
-        d1_2 = torch.relu(self.batch_norm4(self.dec1_2(d1_1 + e4_1)))
-        print(f"dec1_2 {d1_2.shape}")
+        #print(f"dec1_1 {d1_1.shape}")
+        concat_d1 = torch.cat((d1_1, e4_2), dim=1)
+        #print(f"Concat d1: {concat_d1.shape}")
+        d1_2 = torch.relu(self.batch_norm4(self.dec1_2(concat_d1)))
+        #print(f"dec1_2 {d1_2.shape}")
         d1_3 = torch.relu(self.batch_norm4(self.dec1_3(d1_2)))
-        print(f"dec1_3 {d1_3.shape}")
+        #print(f"dec1_3 {d1_3.shape}")
 
-        d2_1 = self.dropout(torch.relu(self.batch_norm3(self.dec2_1(d1_3))))  # Skip connection
-        d2_2 = torch.relu(self.batch_norm3(self.dec2_2(d2_1 + e3_1)))  # Skip connection
-        d2_3 = torch.relu(self.batch_norm3(self.dec2_3(d2_2)))  # Skip connection
+        d2_1 = self.dropout(torch.relu(self.batch_norm3(self.dec2_1(d1_3)))) 
+        concat_d2 = torch.cat((d2_1, e3_2), dim=1)
+        d2_2 = torch.relu(self.batch_norm3(self.dec2_2(concat_d2)))  # Skip connection
+        d2_3 = torch.relu(self.batch_norm3(self.dec2_3(d2_2)))
         #print(f"dec2 {d2_1.shape}")
 
-        d3_1 = self.dropout(torch.relu(self.batch_norm2(self.dec3_1(d2_3))))  # Skip connection
-        d3_2 = torch.relu(self.batch_norm2(self.dec3_2(d3_1 + e2_1)))  # Skip connection
-        d3_3 = torch.relu(self.batch_norm2(self.dec3_3(d3_2)))  # Skip connection
+        d3_1 = self.dropout(torch.relu(self.batch_norm2(self.dec3_1(d2_3))))  
+        concat_d3 = torch.cat((d3_1, e2_2), dim=1)
+        d3_2 = torch.relu(self.batch_norm2(self.dec3_2(concat_d3)))  # Skip connection
+        d3_3 = torch.relu(self.batch_norm2(self.dec3_3(d3_2)))  
         #print(f"dec3 {d3_1.shape}")
 
-        d4_1 = self.dropout(torch.relu(self.batch_norm1(self.dec4_1(d3_3))))  # Skip connection
-        d4_2 = torch.relu(self.batch_norm1(self.dec4_2(d4_1 + e1_1)))  # Skip connection
-        d4_3 = torch.relu(self.batch_norm1(self.dec4_3(d4_2)))  # Skip connection
+        d4_1 = self.dropout(torch.relu(self.batch_norm1(self.dec4_1(d3_3))))  
+        concat_d4 = torch.cat((d4_1, e1_2), dim=1)
+        d4_2 = torch.relu(self.batch_norm1(self.dec4_2(concat_d4)))  # Skip connection
+        d4_3 = torch.relu(self.batch_norm1(self.dec4_3(d4_2)))
         #print(f"dec4 {d4_1.shape}")
 
         # Выход: маски или спектрограммы для всех источников

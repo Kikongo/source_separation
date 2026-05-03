@@ -43,14 +43,29 @@ class MusDBSigSepStems(Dataset):
         vocals_audio = item.targets["vocals"].audio[:, 0] # sr = 44100
         vocals_audio = torch.tensor(vocals_audio, dtype=torch.float32).unsqueeze(0) # [1, n_samples]
         
-        spectrogram_segments = []
+        vocal_spectrogram_segments = []
         audio_segments = divide_into_segments(vocals_audio, sample_rate=44100)
         
         for audio_segment in audio_segments:
             spectrogram_segment = spectrogram_transform(audio_segment)
-            spectrogram_segments.append(spectrogram_segment)
+            vocal_spectrogram_segments.append(spectrogram_segment)
 
-        instance_data["vocals_segments_spectrograms"] = torch.stack(spectrogram_segments, dim=0)
+        vocal_spectrogram_segments = torch.stack(vocal_spectrogram_segments, dim=0)
+
+        acc_audio = item.targets["accompaniment"].audio[:, 0] # sr = 44100
+        acc_audio = torch.tensor(acc_audio, dtype=torch.float32).unsqueeze(0) # [1, n_samples]
+        
+        acc_spectrogram_segments = []
+        audio_segments = divide_into_segments(acc_audio, sample_rate=44100)
+        
+        for audio_segment in audio_segments:
+            spectrogram_segment = spectrogram_transform(audio_segment)
+            acc_spectrogram_segments.append(spectrogram_segment)
+
+        acc_spectrogram_segments = torch.stack(acc_spectrogram_segments, dim=0)
+        
+        stacked_source_spectrograms = torch.stack((vocal_spectrogram_segments, acc_spectrogram_segments), dim=0)
+        instance_data["sources_segments_spectrograms"] = stacked_source_spectrograms.transpose(0,1)
 
         # Get mixture
         mixture_audio = item.audio[:, 0] # sr = 44100

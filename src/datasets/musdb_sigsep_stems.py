@@ -40,8 +40,9 @@ class MusDBSigSepStems(Dataset):
             
         #     instance_data[f"{key}_segments_spectrograms"] = torch.stack(spectrogram_segments, dim=0) #[n_segm, freq, time]
 
-        vocals_audio = item.targets["vocals"].audio[:, 0] # sr = 44100
-        vocals_audio = torch.tensor(vocals_audio, dtype=torch.float32).unsqueeze(0) # [1, n_samples]
+        vocals_audio = item.targets["vocals"].audio # [time, 2] sr = 44100(MusDB)
+        vocals_audio = torch.tensor(vocals_audio, dtype=torch.float32).transpose(0, 1) # [2, n_samples]
+        vocals_audio = torch.mean(vocals_audio, dim=0, keepdim=True) # Make mono-signal
         
         vocal_spectrogram_segments = []
         audio_segments = divide_into_segments(vocals_audio, sample_rate=44100)
@@ -52,8 +53,9 @@ class MusDBSigSepStems(Dataset):
 
         vocal_spectrogram_segments = torch.stack(vocal_spectrogram_segments, dim=0)
 
-        acc_audio = item.targets["accompaniment"].audio[:, 0] # sr = 44100
-        acc_audio = torch.tensor(acc_audio, dtype=torch.float32).unsqueeze(0) # [1, n_samples]
+        acc_audio = item.targets["accompaniment"].audio # sr = 44100
+        acc_audio = torch.tensor(acc_audio, dtype=torch.float32).transpose(0,1) # [2, n_samples]
+        acc_audio = torch.mean(acc_audio, dim=0, keepdim=True)
         
         acc_spectrogram_segments = []
         audio_segments = divide_into_segments(acc_audio, sample_rate=44100)
@@ -68,8 +70,9 @@ class MusDBSigSepStems(Dataset):
         instance_data["sources_segments_spectrograms"] = stacked_source_spectrograms.transpose(0,1)
 
         # Get mixture
-        mixture_audio = item.audio[:, 0] # sr = 44100
-        mixture_audio = torch.tensor(mixture_audio, dtype=torch.float32).unsqueeze(0) # [1, n_samples]
+        mixture_audio = item.audio# sr = 44100
+        mixture_audio = torch.tensor(mixture_audio, dtype=torch.float32).transpose(0,1) # [2, n_samples]
+        mixture_audio = torch.mean(mixture_audio, dim=0, keepdim=True)
         mixture_spectrogram_segments = []
         mixture_audio_segments = divide_into_segments(mixture_audio, sample_rate=44100)
         for mixture_audio_segment in mixture_audio_segments:

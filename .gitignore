@@ -109,6 +109,7 @@ wandb/
 .cometml-runs/
 outputs/
 test_dir/
+shared/
 
 # editor, os cache directory
 .vscode/

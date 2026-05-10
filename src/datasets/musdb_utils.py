@@ -1,6 +1,35 @@
-
 import numpy as np
 import torch
+import torchaudio
+
+def stft(waveform):
+    spectrogram_transform = torchaudio.transforms.Spectrogram(n_fft=2048, hop_length=512, win_length=2048, power=None)
+    complex_spec = spectrogram_transform(waveform)
+
+    # Extract Magnitude (1, freq, time)
+    magnitude = torch.abs(complex_spec)
+
+    # Extract Phase (1, freq, time)
+    phase = torch.angle(complex_spec)
+
+    return magnitude, phase
+
+def istft(spectrogram, phase, waveform_length):
+    spectrogram = torch.sqrt(spectrogram)
+    complex_spectrogram = torch.multiply(spectrogram, phase)
+    complex_spectrogram = complex_spectrogram.to(torch.cdouble)
+    waveform_length = int(waveform_length)
+
+    inverse_spectrogram_transform = torchaudio.transforms.InverseSpectrogram(
+        n_fft=2048,
+        hop_length=512,
+        win_length=2048
+        # window_fn=torch.hann_window # Default is hann_window, explicitly setting if needed for consistency
+    )
+
+    # Pass the inferred length
+    waveform = inverse_spectrogram_transform(complex_spectrogram, length=waveform_length)
+    return waveform
 
 def get_number_of_possible_segments(wav_file, segment_length_in_seconds, sample_rate):
     return int(np.ceil(len(wav_file) / (sample_rate*segment_length_in_seconds)))

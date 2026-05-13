@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 
 from src.metrics.tracker import MetricTracker
-from src.trainer.ss_base_trainer import SSBaseTrainer
+from src.trainer.mss_base_trainer import MSSBaseTrainer
 
 
-class SSTrainer(SSBaseTrainer):
+class MSSTrainer(MSSBaseTrainer):
     """
     Trainer class for source separation models.
     Defines the logic of batch logging and processing for audio source separation tasks.
@@ -57,10 +57,10 @@ class SSTrainer(SSBaseTrainer):
 
         if self.is_train:
             loss.backward()
-            self._clip_grad_norm()
+            #self._clip_grad_norm()
             self.optimizer.step()
-            if self.lr_scheduler is not None:
-                self.lr_scheduler.step()
+            # if self.lr_scheduler is not None:
+            #     self.lr_scheduler.step()
 
         # Update metrics for each loss
         for loss_name in self.config.writer.loss_names:

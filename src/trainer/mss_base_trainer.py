@@ -10,7 +10,7 @@ from src.metrics.tracker import MetricTracker
 from src.utils.io_utils import ROOT_PATH
 
 
-class SSBaseTrainer:
+class MSSBaseTrainer:
     """
     Base class for source separation trainers.
     """

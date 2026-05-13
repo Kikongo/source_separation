@@ -32,14 +32,6 @@ The data loading pipeline:
 3. For each song, create `MusDB_segments` to split into fixed-size segments
 4. Combine all song segments into a single dataset for batching
 
-This matches exactly how you use the data in `model_2sources.ipynb`:
-```python
-mus_train = musdb.DB(subsets='train', download=False)
-musdb_dataset = MusDBSigSepStems(mus_train)
-for n in range(len(musdb_dataset)):
-    song = MusDB_segments(musdb_dataset[n])
-    dataloader = DataLoader(song, batch_size=batch_size)
-```
 
 ## Configuration
 
@@ -116,29 +108,6 @@ trainer:
   from_pretrained: "/path/to/pretrained_model.pth"
 ```
 
-## Custom Loss Functions
-
-### SourceSeparationLoss
-Basic weighted L1 loss for each source:
-
-```python
-from src.loss.source_separation_loss import SourceSeparationLoss
-
-loss = SourceSeparationLoss(n_sources=2, alpha=0.707)
-```
-
-### SourceSeparationLossWithConsistency
-Adds consistency regularization to ensure predicted sources sum to the mixture:
-
-```python
-from src.loss.source_separation_loss import SourceSeparationLossWithConsistency
-
-loss = SourceSeparationLossWithConsistency(
-    n_sources=2,
-    alpha=0.707,
-    consistency_weight=0.1
-)
-```
 
 ## Monitoring Training
 
@@ -151,36 +120,6 @@ Training progress is logged to Weights & Biases (wandb). Key metrics include:
 - `val_correlation`: Test correlation between predictions and ground truth
 - `learning_rate`: Current learning rate
 
-## Evaluation
-
-After training, evaluate on a test song using:
-
-```python
-import torch
-from torch.utils.data import DataLoader
-import musdb
-from src.datasets.musdb_sigsep_2sources import MusDBSigSepStems
-from src.datasets.musdb_segments_2sources import MusDB_segments
-from src.model.mss_model_final import StandardSeparationUNet
-
-# Load model
-model = StandardSeparationUNet(n_sources=2)
-model.load_state_dict(torch.load('model_best.pth')['state_dict'])
-model.eval()
-
-# Load data
-mus_test = musdb.DB(subsets='test', download=False)
-musdb_dataset = MusDBSigSepStems(mus_test)
-dataset = MusDB_segments(musdb_dataset[0])
-dataloader = DataLoader(dataset, batch_size=8)
-
-# Inference
-with torch.no_grad():
-    for mixture, sources in dataloader:
-        mixture = mixture.unsqueeze(1).to('cuda')
-        predictions = model(mixture)
-        # Process predictions...
-```
 
 ## Troubleshooting
 

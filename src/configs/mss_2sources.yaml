@@ -1,0 +1,70 @@
+# Source Separation Training Configuration (2 sources)
+
+# Trainer configuration
+trainer:
+  n_epochs: 40
+  save_period: 5
+  log_step: 50
+  device: cuda
+  seed: 42
+  skip_oom: true
+  monitor: "min val_loss"
+  early_stop: 10
+  resume_from: null
+  from_pretrained: null
+  save_dir: "saved"
+  override: True
+
+# Model configuration
+model:
+  _target_: src.model.mss_model_final.StandardSeparationUNet
+  n_sources: 2
+
+# Loss function configuration
+loss_function:
+  _target_: src.loss.source_separation_loss.SourceSeparationLoss
+  n_sources: 2
+  alpha: 0.707
+
+# Optimizer configuration
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1.0e-4
+  weight_decay: 1.0e-6
+
+# Learning rate scheduler configuration
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.MultiStepLR
+  milestones: [20, 35]
+  gamma: 0.1
+
+# Metrics configuration
+metrics:
+  train:
+    - _target_: src.metrics.source_separation_metric.SourceSeparationL1Metric
+      name: train_l1_error
+  inference:
+    - _target_: src.metrics.source_separation_metric.SourceSeparationL1Metric
+      name: val_l1_error
+    - _target_: src.metrics.source_separation_metric.SourceSeparationMetric
+      name: val_correlation
+
+# Writer (logging) configuration
+writer:
+  _target_: src.logger.wandb.WandBWriter
+  run_name: "mss_2sources_baseline"
+  loss_names: ["loss", "loss_source_0", "loss_source_1"]
+  id_length: 8
+  project_name: "music_source_separation"
+
+# Data configuration
+subsets:
+  - train
+  - test
+
+# Dataloader configuration
+dataloader:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 4
+  num_workers: 2
+  pin_memory: true

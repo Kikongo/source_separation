@@ -2,7 +2,7 @@ import numpy as np
 import museval
 import torch
 from torch.utils.data import DataLoader
-from src.datasets.musdb_segments import MusDB_segments
+from src.datasets.musdb_segments_2sources import MusDB_segments
 from src.datasets.musdb_utils import stft, istft
 
 def evaluate_test_set(musdb_test, model, num_sources):

@@ -8,16 +8,16 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from celery.result import AsyncResult
 import uvicorn
 import traceback
 
 from model import SpectrogramChannelsUNet
 from audio_utils import stft, istft, get_segments_spectrograms
+from tasks import separate_task, celery_app
 
 app = FastAPI(title="Music Source Separation API")
 
-# CORS для Streamlit
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,23 +25,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Глобальное состояние моделей
-models = {}
-
-class SeparateRequest(BaseModel):
-    num_sources: int = 2  # 2 или 4
-
-def load_model(num_sources: int):
-    if num_sources not in models:
-        path = f"models/unet_{num_sources}sources.pth"
-        print(f"Loading model from: {os.path.abspath(path)}")
-        model = SpectrogramChannelsUNet(n_sources=num_sources)
-        model.load_state_dict(torch.load(f"src/app/backend/models/unet_{num_sources}sources.pth", map_location='cpu'))
-        model.eval()
-        if torch.cuda.is_available():
-            model = model.cuda()
-        models[num_sources] = model
-    return models[num_sources]
+ALLOWED_TYPES = [
+    "audio/wav", "audio/x-wav",
+    "audio/mpeg", "audio/mp3",
+    "audio/flac", "audio/x-flac",
+    "audio/ogg",
+]
 
 @app.get("/health")
 def health():
@@ -52,103 +41,48 @@ async def separate(
     file: UploadFile = File(...),
     num_sources: int = 2
 ):
-    allowed_types = [
-    "audio/wav", "audio/x-wav", 
-    "audio/mpeg", "audio/mp3", 
-    "audio/flac", "audio/x-flac",
-    "audio/ogg"]
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(400, "Unsupported audio format")
 
-    # Проверка формата
-    if file.content_type not in allowed_types:
-        raise HTTPException(400, "Неподдерживаемый формат")
-    
-    # Сохранение загруженного файла
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_input:
-        content = await file.read()
-        tmp_input.write(content)
-        input_path = tmp_input.name
-    
-    try:
-        # Загрузка и предобработка аудио
-        waveform, sr = torchaudio.load(input_path)
-        print(waveform.shape)
-        print(sr)
-        if sr != 44100:
-            resampler = torchaudio.transforms.Resample(sr, 44100)
-            waveform = resampler(waveform)
-        if waveform.shape[0] > 1:
-            waveform = torch.mean(waveform, dim=0, keepdim=True)
-        
-        audio_length = waveform.shape[1] / sr
-        print(audio_length)
-        print(int(audio_length))
+    if num_sources not in (2, 4):
+        raise HTTPException(400, "num_sources must be 2 or 4")
 
-        # STFT
-        spectrogram, phase = stft(waveform)
-        print(phase.shape)
-        phase = phase.squeeze(0)
+    # Save upload to shared volume so Celery worker can read it
+    os.makedirs("/app/shared/uploads", exist_ok=True)
+    suffix = os.path.splitext(file.filename or "audio")[1] or ".wav"
+    with tempfile.NamedTemporaryFile(
+        delete=False, suffix=suffix, dir="/app/shared/uploads"
+    ) as tmp:
+        tmp.write(await file.read())
+        input_path = tmp.name
 
-        # Get segments for model input
-        segments_spectrograms = get_segments_spectrograms(waveform)
-        
-        # Инференс модели
-        model = load_model(num_sources)
-        full_output_specs = {}
-        for i in range(num_sources):
-            full_output_specs[i] = []
-        with torch.no_grad():
-            if torch.cuda.is_available():
-                for segment_spectrogram in segments_spectrograms:
-                    segment_spectrogram = segment_spectrogram.unsqueeze(0).cuda()
-                    output_specs = model(segment_spectrogram.unsqueeze(0)) #[Batch, N_sources, freq, time]
-                    for i in range(num_sources):
-                        full_output_specs[i].append(output_specs[0][i])
-                for i in range(num_sources):
-                    full_output_specs[i] = torch.hstack(full_output_specs[i])[:, :spectrogram.shape[1]]
-            else:
-                for segment_spectrogram in segments_spectrograms:
-                    print(segment_spectrogram.shape)
+    task = separate_task.delay(input_path, num_sources)
+    return {"job_id": task.id}
 
-                    segment_spectrogram = segment_spectrogram.unsqueeze(0).cpu()
-                    output_specs = model(segment_spectrogram.unsqueeze(0)) #[Batch, N_sources, freq, time]
-                    print(f"Output {output_specs.shape}")
-                    for i in range(num_sources):
-                        full_output_specs[i].append(output_specs[0][i])
-                for i in range(num_sources):
-                    full_output_specs[i] = torch.hstack(full_output_specs[i])[:, :spectrogram.shape[2]]
-        print(f" Full {full_output_specs[i].shape}")
-        # Восстановление аудио для каждого источника
-        result_paths = []
-        source_names = ["vocals", "accompaniment"] if num_sources == 2 else ["vocals", "drums", "bass", "other"]
-        
-        waveform_length = audio_length * sr
-        for i, name in enumerate(source_names):
-            audio = istft(full_output_specs[i], phase, waveform_length)
-            print(audio.shape)
-            
-            output_path = f"src/app/shared/{name}_{os.path.basename(input_path)}"
-            sf.write(output_path, audio.numpy().T, 44100)
-            result_paths.append(output_path)
-        
-        # Очистка входного файла
-        os.unlink(input_path)
-        
-        return {
-            "sources": source_names,
-            "files": [f"/download/{os.path.basename(p)}" for p in result_paths]
-        }
-        
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        raise HTTPException(500, str(e))
+
+@app.get("/status/{job_id}")
+def status(job_id: str):
+    result = AsyncResult(job_id, app=celery_app)
+    if result.state == "PENDING":
+        return {"state": "pending"}
+    elif result.state == "PROGRESS":
+        return {"state": "processing", "info": result.info}
+    elif result.state == "SUCCESS":
+        return {"state": "success", "result": result.result}
+    elif result.state == "FAILURE":
+        return {"state": "failed", "error": str(result.info)}
+    return {"state": result.state}
+
 
 @app.get("/download/{filename}")
 def download(filename: str):
-    file_path = f"src/app/shared/{filename}"
+    # Prevent path traversal
+    filename = os.path.basename(filename)
+    file_path = f"/app/shared/{filename}"
     if not os.path.exists(file_path):
-        raise HTTPException(404, "Файл не найден")
+        raise HTTPException(404, "File not found")
     return FileResponse(file_path, filename=filename)
 
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -12,6 +12,8 @@
 
 This repository contains a template for solving music source separation task with PyTorch.
 
+Online separation is provided on the website: https://app.neuralstems.lol/
+
 ## Installation
 
 Follow these steps to install the project:
@@ -54,10 +56,16 @@ Follow these steps to install the project:
 
 ## How To Use
 
+The full MUSDB18 dataset needs to be downloaded via Zenodo https://zenodo.org/records/1117372 and stored (unzipped) separately.
+
+Create .env file and set variable MUSDB_PATH. It is the path to musdb dataset
+example:
+MUSDB_PATH = "/data/musdb/"
+
 To train a model, run the following command:
 
 ```bash
-python3 train.py -cn=CONFIG_NAME HYDRA_CONFIG_ARGUMENTS
+python3 mss_train.py --cn=CONFIG_NAME HYDRA_CONFIG_ARGUMENTS
 ```
 
 Where `CONFIG_NAME` is a config from `src/configs` and `HYDRA_CONFIG_ARGUMENTS` are optional arguments.
@@ -68,6 +76,7 @@ To run inference (evaluate the model or save predictions):
 python3 inference.py HYDRA_CONFIG_ARGUMENTS
 ```
 
+You can also train models in notebooks `model_2sources.ipynb` and `model_4sources.ipynb`.
 ## Credits
 
 This repository is based on a [PyTorch Project Template](https://github.com/Blinorot/pytorch_project_template).
